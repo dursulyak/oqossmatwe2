@@ -168,17 +168,30 @@ async function loadParts() {
 }
 
 async function addPart() {
-    const name = document.getElementById("name").value;
+    const name = document.getElementById("name").value.trim();
     const status = document.getElementById("status").value;
-    const price = document.getElementById("price").value;
+    const price = parseFloat(document.getElementById("price").value);
 
-    if (!name || !price) return;
+    if (!name || isNaN(price)) {
+        alert("Enter valid name and price!");
+        return;
+    }
 
-    await supabase.from("parts").insert([{ name, status, price }]);
+    const { data, error } = await supabase
+        .from("parts")
+        .insert([{ name, status, price }]);
+
+    if (error) {
+        console.error("Insert error:", error);
+        alert("Failed to add part: " + error.message);
+        return;
+    }
+
     document.getElementById("name").value = "";
     document.getElementById("price").value = "";
     loadParts();
 }
+
 
 async function removePart(id) {
     await supabase.from("parts").delete().eq("id", id);
