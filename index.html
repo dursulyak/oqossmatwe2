@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BMW Parts Catalog</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root {
+    --bg: #0f172a;
+    --card: #111827;
+    --accent: #3b82f6;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --success: #22c55e;
+    --danger: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+    background: linear-gradient(135deg, #020617, #0f172a);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+.card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+}
+
+.form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.form input, .form select, .form button {
+    flex: 1 1 auto;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    outline: none;
+    font-size: 14px;
+}
+
+.form input, .form select {
+    background: #020617;
+    color: var(--text);
+    border: 1px solid #1f2933;
+}
+
+.form button {
+    background: var(--accent);
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.search input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #1f2933;
+    background: #020617;
+    color: var(--text);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 10px;
+}
+
+.status {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.available { background: rgba(34,197,94,0.15); color: #22c55e; }
+.out { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+.actions button {
+    background: transparent;
+    border: 1px solid #1f2933;
+    color: white;
+    margin-right: 5px;
+    padding: 5px 8px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>BMW Parts Catalog</h1>
+
+    <div class="card">
+        <div class="form">
+            <input id="name" placeholder="Part name">
+            <select id="status">
+                <option value="available">Available</option>
+                <option value="out of stock">Out of stock</option>
+            </select>
+            <input id="price" type="number" placeholder="Price ($)">
+            <button onclick="addPart()">Add</button>
+        </div>
+    </div>
+
+    <div class="card search">
+        <input id="search" placeholder="Search..." oninput="render()">
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Price</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="list"></tbody>
+        </table>
+        <div id="empty" style="text-align:center; color:#9ca3af; display:none;">
+            No parts
+        </div>
+    </div>
+</div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const supabaseUrl = "https://ТВОЙ_PROJECT_ID.supabase.co";
+const supabaseKey = "ТВОЙ_ANON_KEY";
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+let parts = [];
+
+async function loadParts() {
+    const { data } = await supabase.from("parts").select("*").order("name");
+    parts = data || [];
+    render();
+}
+
+async function addPart() {
+    const name = document.getElementById("name").value;
+    const status = document.getElementById("status").value;
+    const price = document.getElementById("price").value;
+
+    if (!name || !price) return;
+
+    await supabase.from("parts").insert([{ name, status, price }]);
+    document.getElementById("name").value = "";
+    document.getElementById("price").value = "";
+    loadParts();
+}
+
+async function removePart(id) {
+    await supabase.from("parts").delete().eq("id", id);
+    loadParts();
+}
+
+async function toggleStatus(id, current) {
+    const newStatus = current === "available" ? "out of stock" : "available";
+    await supabase.from("parts").update({ status: newStatus }).eq("id", id);
+    loadParts();
+}
+
+function render() {
+    const q = document.getElementById("search").value.toLowerCase();
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    const filtered = parts.filter(p => p.name.toLowerCase().includes(q));
+    document.getElementById("empty").style.display = filtered.length ? "none" : "block";
+
+    filtered.forEach(p => {
+        list.innerHTML += `
+        <tr>
+            <td>${p.name}</td>
+            <td><span class="status ${p.status === "available" ? "available" : "out"}">${p.status}</span></td>
+            <td>$${p.price}</td>
+            <td class="actions">
+                <button onclick="toggleStatus('${p.id}','${p.status}')">Change</button>
+                <button onclick="removePart('${p.id}')">Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+loadParts();
+</script>
+</body>
+</html>
